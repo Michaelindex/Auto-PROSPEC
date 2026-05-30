@@ -1,0 +1,121 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Settings {
+  id                     Int      @id @default(1)
+  mode                   String   @default("test")
+  maxConcurrentCampaigns Int      @default(1)
+  dailyLimitEnabled      Boolean  @default(false)
+  dailyLimitValue        Int      @default(200)
+  defaultMinDelaySec     Int      @default(30)
+  defaultMaxDelaySec     Int      @default(90)
+  simulateTyping         Boolean  @default(true)
+  updatedAt              DateTime @updatedAt
+}
+
+model Campaign {
+  id             String    @id @default(cuid())
+  name           String
+  status         String    @default("draft")
+  flowMode       String
+  minDelaySec    Int
+  maxDelaySec    Int
+  simulateTyping Boolean   @default(true)
+  scheduledAt    DateTime?
+  startedAt      DateTime?
+  pausedAt       DateTime?
+  completedAt    DateTime?
+  imagePath      String?
+  imageCaption   String?
+  stopOnReply    Boolean   @default(true)
+  totalContacts  Int       @default(0)
+  sentCount      Int       @default(0)
+  failedCount    Int       @default(0)
+  repliedCount   Int       @default(0)
+  queuePosition  Int?
+
+  messages  Message[]
+  contacts  CampaignContact[]
+  sendLogs  SendLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Message {
+  id         String @id @default(cuid())
+  campaignId String
+  order      Int
+  campaign   Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  variations MessageVariation[]
+
+  @@unique([campaignId, order])
+}
+
+model MessageVariation {
+  id        String  @id @default(cuid())
+  messageId String
+  content   String
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+}
+
+model Contact {
+  id        String   @id @default(cuid())
+  phone     String   @unique
+  firstName String
+  rawName   String
+  type      String
+  createdAt DateTime @default(now())
+
+  campaigns CampaignContact[]
+}
+
+model CampaignContact {
+  id              String    @id @default(cuid())
+  campaignId      String
+  contactId       String
+  status          String    @default("pending")
+  currentMsgOrder Int       @default(0)
+  lastSentAt      DateTime?
+  repliedAt       DateTime?
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact  Contact  @relation(fields: [contactId], references: [id])
+
+  @@unique([campaignId, contactId])
+}
+
+model SendLog {
+  id            String   @id @default(cuid())
+  campaignId    String
+  contactId     String
+  phone         String
+  messageOrder  Int
+  variationUsed String?
+  status        String
+  errorType     String?
+  errorMessage  String?
+  sentAt        DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model IncomingMessage {
+  id         String   @id @default(cuid())
+  fromPhone  String
+  fromName   String?
+  content    String
+  campaignId String?
+  receivedAt DateTime @default(now())
+}
+
+model DailyCounter {
+  date      String @id
+  sentCount Int    @default(0)
+}

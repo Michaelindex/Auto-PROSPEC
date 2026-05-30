@@ -1,0 +1,28 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Backend - dados sensíveis
+backend/data/
+backend/uploads/
+backend/logs/
+backend/prisma/migrations/dev.db*
+
+# Build
+frontend/dist/
+backend/dist/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Logs
+*.log
