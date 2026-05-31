@@ -58,23 +58,41 @@ async function sendMessage(campaign, contact, message, settings, isTest) {
   let targetPhone = contact.phone
   if (isTest) {
     targetPhone = TEST_PHONE_NUMBER
+    if (!targetPhone) throw new Error('TEST_PHONE_NUMBER não configurado no .env')
     text = `[TESTE - Campanha: ${campaign.name}] [Contato fictício: ${contact.firstName}]\n\n${text}`
   }
 
   const jid = targetPhone.replace('+', '') + '@s.whatsapp.net'
 
+  logger.info({
+    campaignId: campaign.id,
+    contactPhone: contact.phone,
+    targetJid: jid,
+    isTest,
+    msgOrder: message.order,
+    textPreview: text.slice(0, 80)
+  }, '[CAMPANHA] Preparando envio')
+
   // Simulate typing
   if (campaign.simulateTyping) {
     const typingDuration = Math.min((text.length / 50) * 1000, 5000)
+    logger.debug({ jid, typingDuration }, '[CAMPANHA] Iniciando simulação de digitação')
     await setPresenceTyping(jid, typingDuration)
   }
 
   const isFirstMessage = message.order === 1
-  const hasImage = isFirstMessage && campaign.imagePath && existsSync(campaign.imagePath)
+  const hasImage = isFirstMessage && campaign.imagePath
 
   if (hasImage) {
-    const imageBuffer = readFileSync(campaign.imagePath)
-    await sendImageMessage(jid, imageBuffer, text)
+    if (!existsSync(campaign.imagePath)) {
+      logger.warn({ imagePath: campaign.imagePath }, '[CAMPANHA] Imagem não encontrada no disco — enviando só texto')
+      await sendTextMessage(jid, text)
+    } else {
+      logger.info({ imagePath: campaign.imagePath }, '[CAMPANHA] Carregando imagem do disco')
+      const imageBuffer = readFileSync(campaign.imagePath)
+      logger.info({ imageSize: imageBuffer.length }, '[CAMPANHA] Enviando imagem com legenda')
+      await sendImageMessage(jid, imageBuffer, text)
+    }
   } else {
     await sendTextMessage(jid, text)
   }
@@ -86,29 +104,54 @@ async function processContact(campaign, campaignContact, messages, settings, isT
   const state = activeCampaigns.get(campaign.id)
   const contact = campaignContact.contact
 
+  logger.info({
+    campaignId: campaign.id,
+    contactId: contact.id,
+    phone: contact.phone,
+    name: contact.firstName,
+    totalMessages: messages.length,
+    isTest
+  }, '[CAMPANHA] Iniciando processamento do contato')
+
   await prisma.campaignContact.update({
     where: { id: campaignContact.id },
     data: { status: 'in_progress' }
   })
 
   for (const message of messages) {
-    if (state?.stopping) break
+    if (state?.stopping) {
+      logger.info({ campaignId: campaign.id }, '[CAMPANHA] Parada solicitada — interrompendo contato')
+      break
+    }
 
     // Re-check if replied
     const fresh = await prisma.campaignContact.findUnique({ where: { id: campaignContact.id } })
-    if (fresh?.status === 'replied' && campaign.stopOnReply) break
+    if (fresh?.status === 'replied' && campaign.stopOnReply) {
+      logger.info({ phone: contact.phone }, '[CAMPANHA] Contato já respondeu — pulando mensagens restantes')
+      break
+    }
 
     const limitReached = await checkDailyLimit()
     if (limitReached) {
+      logger.warn('[CAMPANHA] Limite diário atingido — pausando campanha')
       await pauseAllForDailyLimit()
       return
     }
 
+    logger.info({
+      campaignId: campaign.id,
+      phone: contact.phone,
+      msgOrder: message.order,
+      totalVariations: message.variations.length
+    }, '[CAMPANHA] Processando mensagem')
+
     try {
-      // Check WhatsApp registration on first message only
-      if (message.order === 1) {
+      // Check WhatsApp registration on first message only (skip in test mode)
+      if (message.order === 1 && !isTest) {
+        logger.info({ phone: contact.phone }, '[CAMPANHA] Verificando se número está no WhatsApp')
         const onWA = await checkOnWhatsApp(contact.phone)
         if (!onWA) {
+          logger.warn({ phone: contact.phone }, '[CAMPANHA] Número não está no WhatsApp — descartando')
           await prisma.sendLog.create({
             data: {
               campaignId: campaign.id,
@@ -129,9 +172,11 @@ async function processContact(campaign, campaignContact, messages, settings, isT
           })
           return
         }
+        logger.info({ phone: contact.phone }, '[CAMPANHA] Número confirmado no WhatsApp')
       }
 
       const variationUsed = await sendMessage(campaign, contact, message, settings, isTest)
+      logger.info({ phone: contact.phone, msgOrder: message.order }, '[CAMPANHA] ✅ Mensagem enviada com sucesso')
 
       const { date } = await getTodayCount()
       await incrementDailyCounter(date)
@@ -172,8 +217,16 @@ async function processContact(campaign, campaignContact, messages, settings, isT
       })
 
     } catch (err) {
-      logger.error(err, 'Erro ao enviar mensagem')
       const errorType = classifyError(err)
+      logger.error({
+        campaignId: campaign.id,
+        phone: contact.phone,
+        msgOrder: message.order,
+        errorType,
+        errorMessage: err.message,
+        stack: err.stack
+      }, '[CAMPANHA] ❌ ERRO ao enviar mensagem')
+
       await prisma.sendLog.create({
         data: {
           campaignId: campaign.id,
@@ -249,6 +302,12 @@ async function runSequential(campaignId, settings, isTest) {
   })
 
   const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } })
+
+  logger.info({
+    campaignId,
+    pendingContacts: contacts.length,
+    messages: messages.map(m => ({ order: m.order, variations: m.variations.length }))
+  }, '[CAMPANHA] runSequential — contatos e mensagens carregados')
 
   for (const cc of contacts) {
     if (state.stopping) break
@@ -333,7 +392,7 @@ async function runShuffled(campaignId, settings, isTest) {
 }
 
 export async function runCampaign(campaignId) {
-  logger.info({ campaignId }, 'Iniciando execução de campanha')
+  logger.info({ campaignId }, '[CAMPANHA] ========== INICIANDO EXECUÇÃO ==========')
   activeCampaigns.set(campaignId, { running: true, stopping: false })
 
   try {
@@ -342,16 +401,37 @@ export async function runCampaign(campaignId) {
       include: { messages: { include: { variations: true } } }
     })
 
-    if (!campaign) throw new Error('Campanha não encontrada')
+    if (!campaign) throw new Error('Campanha não encontrada no banco')
 
     const settings = await prisma.settings.findFirst()
     const isTest = settings?.mode === 'test'
+
+    logger.info({
+      campaignId,
+      name: campaign.name,
+      flowMode: campaign.flowMode,
+      totalContacts: campaign.totalContacts,
+      totalMessages: campaign.messages.length,
+      isTest,
+      testPhone: isTest ? TEST_PHONE_NUMBER : null,
+      minDelaySec: campaign.minDelaySec,
+      maxDelaySec: campaign.maxDelaySec,
+      simulateTyping: campaign.simulateTyping,
+      hasImage: !!campaign.imagePath,
+      imagePath: campaign.imagePath || null
+    }, '[CAMPANHA] Configuração da campanha')
+
+    if (isTest && !TEST_PHONE_NUMBER) {
+      throw new Error('Modo TESTE ativo mas TEST_PHONE_NUMBER não está configurado no .env!')
+    }
 
     io?.emit('campaign:status_changed', {
       campaignId,
       status: campaign.status,
       metrics: { totalContacts: campaign.totalContacts, sentCount: campaign.sentCount }
     })
+
+    logger.info({ campaignId, flowMode: campaign.flowMode }, '[CAMPANHA] Iniciando fluxo de disparo')
 
     if (campaign.flowMode === 'sequential_per_contact') {
       await runSequential(campaignId, settings, isTest)
@@ -365,22 +445,35 @@ export async function runCampaign(campaignId) {
     const state = activeCampaigns.get(campaignId)
     const finalCampaign = await prisma.campaign.findUnique({ where: { id: campaignId } })
 
+    logger.info({
+      campaignId,
+      finalStatus: finalCampaign.status,
+      sentCount: finalCampaign.sentCount,
+      failedCount: finalCampaign.failedCount
+    }, '[CAMPANHA] Fluxo concluído — verificando status final')
+
     if (state?.stopping && finalCampaign.status === 'pausing') {
       await prisma.campaign.update({
         where: { id: campaignId },
         data: { status: 'paused', pausedAt: new Date() }
       })
       io?.emit('campaign:status_changed', { campaignId, status: 'paused', metrics: {} })
+      logger.info({ campaignId }, '[CAMPANHA] Campanha pausada com sucesso')
     } else if (!['paused', 'paused_daily_limit', 'cancelled', 'failed'].includes(finalCampaign.status)) {
       await prisma.campaign.update({
         where: { id: campaignId },
         data: { status: 'completed', completedAt: new Date() }
       })
       io?.emit('campaign:status_changed', { campaignId, status: 'completed', metrics: {} })
+      logger.info({ campaignId, sentCount: finalCampaign.sentCount }, '[CAMPANHA] ✅ Campanha concluída com sucesso')
     }
 
   } catch (err) {
-    logger.error(err, 'Erro na execução da campanha')
+    logger.error({
+      campaignId,
+      errorMessage: err.message,
+      stack: err.stack
+    }, '[CAMPANHA] ❌ ERRO CRÍTICO na execução da campanha')
     await prisma.campaign.update({
       where: { id: campaignId },
       data: { status: 'failed' }
@@ -388,6 +481,7 @@ export async function runCampaign(campaignId) {
     io?.emit('campaign:status_changed', { campaignId, status: 'failed', metrics: {} })
   } finally {
     activeCampaigns.delete(campaignId)
+    logger.info({ campaignId }, '[CAMPANHA] ========== EXECUÇÃO FINALIZADA ==========')
     await promoteQueued()
   }
 }

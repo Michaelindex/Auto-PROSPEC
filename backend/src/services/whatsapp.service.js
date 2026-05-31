@@ -175,29 +175,61 @@ export async function logout() {
 }
 
 export async function sendTextMessage(jid, text) {
-  if (!sock) throw new Error('WhatsApp não conectado')
-  return sock.sendMessage(jid, { text })
+  if (!sock) throw new Error('WhatsApp não conectado — sock é null')
+  if (!sock.user) throw new Error('WhatsApp não autenticado — sock.user é null')
+  logger.info({ jid, textLength: text.length }, '[WA] Enviando mensagem de texto')
+  try {
+    const result = await sock.sendMessage(jid, { text })
+    logger.info({ jid, msgId: result?.key?.id }, '[WA] Mensagem de texto enviada com sucesso')
+    return result
+  } catch (err) {
+    logger.error({ jid, err: err.message, stack: err.stack }, '[WA] ERRO ao enviar mensagem de texto')
+    throw err
+  }
 }
 
 export async function sendImageMessage(jid, imageBuffer, caption, mimetype = 'image/jpeg') {
-  if (!sock) throw new Error('WhatsApp não conectado')
-  return sock.sendMessage(jid, { image: imageBuffer, caption, mimetype })
+  if (!sock) throw new Error('WhatsApp não conectado — sock é null')
+  if (!sock.user) throw new Error('WhatsApp não autenticado — sock.user é null')
+  logger.info({ jid, captionLength: caption?.length, imageSize: imageBuffer.length }, '[WA] Enviando imagem')
+  try {
+    const result = await sock.sendMessage(jid, { image: imageBuffer, caption, mimetype })
+    logger.info({ jid, msgId: result?.key?.id }, '[WA] Imagem enviada com sucesso')
+    return result
+  } catch (err) {
+    logger.error({ jid, err: err.message, stack: err.stack }, '[WA] ERRO ao enviar imagem')
+    throw err
+  }
 }
 
 export async function setPresenceTyping(jid, durationMs) {
-  if (!sock) return
-  await sock.sendPresenceUpdate('composing', jid)
-  await new Promise(r => setTimeout(r, durationMs))
-  await sock.sendPresenceUpdate('paused', jid)
+  if (!sock || !sock.user) return
+  logger.debug({ jid, durationMs }, '[WA] Simulando digitação')
+  try {
+    await sock.sendPresenceUpdate('composing', jid)
+    await new Promise(r => setTimeout(r, durationMs))
+    await sock.sendPresenceUpdate('paused', jid)
+  } catch (err) {
+    logger.warn({ jid, err: err.message }, '[WA] Erro ao simular digitação (não crítico)')
+  }
 }
 
 export async function checkOnWhatsApp(phone) {
-  if (!sock) return false
+  if (!sock || !sock.user) {
+    logger.warn({ phone }, '[WA] checkOnWhatsApp: sock não disponível')
+    return true
+  }
   try {
     const jid = phone.replace('+', '') + '@s.whatsapp.net'
-    const [result] = await sock.onWhatsApp(jid)
-    return result?.exists || false
-  } catch {
-    return false
+    logger.info({ phone, jid }, '[WA] Verificando se número está no WhatsApp')
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000))
+    const check = sock.onWhatsApp(jid)
+    const [result] = await Promise.race([check, timeout])
+    const exists = result?.exists || false
+    logger.info({ phone, exists }, '[WA] Resultado da verificação do número')
+    return exists
+  } catch (err) {
+    logger.warn({ phone, err: err.message }, '[WA] checkOnWhatsApp falhou — assumindo que existe')
+    return true
   }
 }

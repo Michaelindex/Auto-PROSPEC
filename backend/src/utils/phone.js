@@ -2,8 +2,16 @@ import { parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js'
 
 export function normalizePhone(raw) {
   let cleaned = raw.replace(/[^\d+]/g, '')
-  if (!cleaned.startsWith('+')) cleaned = '+55' + cleaned
-  return cleaned
+
+  if (cleaned.startsWith('+')) return cleaned
+
+  // Remove leading 55 only if followed by valid DDD (10 or 11 digits remaining after 55)
+  // e.g. "5517992010557" → remove leading "55" → "17992010557" → add "+55"
+  if (cleaned.startsWith('55') && (cleaned.length === 12 || cleaned.length === 13)) {
+    cleaned = cleaned.slice(2)
+  }
+
+  return '+55' + cleaned
 }
 
 export function classifyPhone(phone) {
