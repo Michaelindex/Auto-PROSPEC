@@ -6,6 +6,7 @@ import { Dashboard } from './pages/Dashboard'
 import { Campaigns } from './pages/Campaigns'
 import { NewCampaign } from './pages/NewCampaign'
 import { CampaignDetail } from './pages/CampaignDetail'
+import { EditCampaign } from './pages/EditCampaign'
 import { Contacts } from './pages/Contacts'
 import { Settings } from './pages/Settings'
 import { getWhatsAppStatus, getSettings } from './services/api'
@@ -51,6 +52,7 @@ export default function App() {
           <Route path="/campaigns" element={<Campaigns />} />
           <Route path="/campaigns/new" element={<NewCampaign />} />
           <Route path="/campaigns/:id" element={<CampaignDetail />} />
+          <Route path="/campaigns/:id/edit" element={<EditCampaign />} />
           <Route path="/contacts" element={<Contacts />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" />} />
