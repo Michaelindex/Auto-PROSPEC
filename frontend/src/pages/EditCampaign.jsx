@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { Plus, Trash2, ChevronLeft } from 'lucide-react'
+import { Plus, Trash2, ChevronLeft, X, ImageIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -9,6 +9,8 @@ import { Switch } from '@/components/ui/switch'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { getCampaign, updateCampaign } from '@/services/api'
 import { toast } from 'sonner'
+
+const API_BASE = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001'
 
 export function EditCampaign() {
   const { id } = useParams()
@@ -25,6 +27,10 @@ export function EditCampaign() {
     imageCaption: ''
   })
   const [messages, setMessages] = useState([])
+  const [currentImageUrl, setCurrentImageUrl] = useState(null)  // URL da imagem atual no servidor
+  const [newImageFile, setNewImageFile] = useState(null)         // nova imagem selecionada
+  const [newImagePreview, setNewImagePreview] = useState(null)   // preview da nova
+  const [removeImage, setRemoveImage] = useState(false)          // flag para remover
 
   useEffect(() => {
     async function load() {
@@ -44,6 +50,7 @@ export function EditCampaign() {
           stopOnReply: c.stopOnReply,
           imageCaption: c.imageCaption || ''
         })
+        if (c.imageUrl) setCurrentImageUrl(`${API_BASE}${c.imageUrl}`)
         setMessages(
           (c.messages || []).map(m => ({
             order: m.order,
@@ -62,6 +69,21 @@ export function EditCampaign() {
 
   function updateField(field, value) {
     setForm(f => ({ ...f, [field]: value }))
+  }
+
+  function handleNewImage(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    setNewImageFile(file)
+    setNewImagePreview(URL.createObjectURL(file))
+    setRemoveImage(false)
+  }
+
+  function handleRemoveImage() {
+    setCurrentImageUrl(null)
+    setNewImageFile(null)
+    setNewImagePreview(null)
+    setRemoveImage(true)
   }
 
   function addMessage() {
@@ -104,6 +126,7 @@ export function EditCampaign() {
     setSaving(true)
     try {
       const fd = new FormData()
+      if (newImageFile) fd.append('image', newImageFile)
       fd.append('data', JSON.stringify({
         name: form.name,
         minDelaySec: Number(form.minDelaySec),
@@ -111,6 +134,7 @@ export function EditCampaign() {
         simulateTyping: form.simulateTyping,
         stopOnReply: form.stopOnReply,
         imageCaption: form.imageCaption || null,
+        removeImage,
         messages
       }))
       await updateCampaign(id, fd)
@@ -187,6 +211,66 @@ export function EditCampaign() {
           </CardContent>
         </Card>
 
+        {/* Image */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">Imagem (enviada com a 1ª mensagem)</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            {/* Preview da imagem atual ou nova */}
+            {(newImagePreview || currentImageUrl) && !removeImage && (
+              <div className="relative inline-block">
+                <img
+                  src={newImagePreview || currentImageUrl}
+                  alt="Imagem da campanha"
+                  className="max-h-40 rounded-lg object-cover border"
+                />
+                <button
+                  type="button"
+                  onClick={handleRemoveImage}
+                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600"
+                  title="Remover imagem"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+                {newImageFile && (
+                  <span className="block text-xs text-green-600 mt-1">Nova imagem selecionada</span>
+                )}
+              </div>
+            )}
+
+            {!newImagePreview && !currentImageUrl && !removeImage && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <ImageIcon className="h-4 w-4" /> Sem imagem
+              </div>
+            )}
+
+            {removeImage && (
+              <p className="text-sm text-red-500">Imagem será removida ao salvar.</p>
+            )}
+
+            <div>
+              <Label>{currentImageUrl && !removeImage ? 'Trocar imagem' : 'Adicionar imagem'} (PNG/JPG, máx 5MB)</Label>
+              <Input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="mt-1"
+                onChange={handleNewImage}
+              />
+            </div>
+
+            {(newImageFile || (currentImageUrl && !removeImage)) && (
+              <div>
+                <Label>Legenda</Label>
+                <Input
+                  className="mt-1"
+                  placeholder="Legenda da imagem (opcional)"
+                  value={form.imageCaption}
+                  onChange={e => updateField('imageCaption', e.target.value)}
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Send settings */}
         <Card>
           <CardHeader><CardTitle className="text-base">Configurações de Envio</CardTitle></CardHeader>
@@ -208,10 +292,6 @@ export function EditCampaign() {
             <div className="flex items-center justify-between">
               <Label>Parar se cliente responder</Label>
               <Switch checked={form.stopOnReply} onCheckedChange={v => updateField('stopOnReply', v)} />
-            </div>
-            <div>
-              <Label>Legenda da imagem</Label>
-              <Input className="mt-1" placeholder="Legenda (opcional)" value={form.imageCaption} onChange={e => updateField('imageCaption', e.target.value)} />
             </div>
           </CardContent>
         </Card>

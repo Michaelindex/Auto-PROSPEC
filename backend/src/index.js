@@ -46,6 +46,9 @@ app.use((req, res, next) => {
   next()
 })
 
+// Static uploads (images)
+app.use('/uploads', express.static(resolve(__dirname, '../uploads')))
+
 // Routes
 app.use('/api/whatsapp', whatsappRoutes)
 app.use('/api/settings', settingsRoutes)

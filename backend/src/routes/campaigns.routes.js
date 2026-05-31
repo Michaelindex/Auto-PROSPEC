@@ -31,13 +31,22 @@ const upload = multer({
 
 const router = Router()
 
+// Convert absolute imagePath to a public URL
+function withImageUrl(campaign) {
+  if (!campaign) return campaign
+  const imageUrl = campaign.imagePath
+    ? `/uploads/images/${campaign.imagePath.replace(/\\/g, '/').split('/').pop()}`
+    : null
+  return { ...campaign, imageUrl }
+}
+
 // List campaigns
 router.get('/', async (req, res) => {
   const campaigns = await prisma.campaign.findMany({
     orderBy: { createdAt: 'desc' },
     include: { _count: { select: { messages: true, contacts: true } } }
   })
-  res.json(campaigns)
+  res.json(campaigns.map(withImageUrl))
 })
 
 // Create campaign
@@ -101,7 +110,7 @@ router.get('/:id', async (req, res) => {
     }
   })
   if (!campaign) return res.status(404).json({ error: 'Não encontrada' })
-  res.json(campaign)
+  res.json(withImageUrl(campaign))
 })
 
 // Update campaign (only paused/draft)
@@ -114,9 +123,16 @@ router.put('/:id', upload.single('image'), async (req, res) => {
     }
 
     const body = typeof req.body.data === 'string' ? JSON.parse(req.body.data) : req.body
-    const { name, flowMode, minDelaySec, maxDelaySec, simulateTyping, stopOnReply, scheduledAt, messages, imageCaption } = body
+    const { name, flowMode, minDelaySec, maxDelaySec, simulateTyping, stopOnReply, scheduledAt, messages, imageCaption, removeImage } = body
 
-    const imagePath = req.file ? req.file.path : campaign.imagePath
+    let imagePath
+    if (req.file) {
+      imagePath = req.file.path          // nova imagem enviada
+    } else if (removeImage) {
+      imagePath = null                   // usuário pediu para remover
+    } else {
+      imagePath = campaign.imagePath     // mantém a atual
+    }
 
     // Delete old messages and recreate
     if (messages) {
@@ -147,7 +163,7 @@ router.put('/:id', upload.single('image'), async (req, res) => {
       }
     })
 
-    res.json(updated)
+    res.json(withImageUrl(updated))
   } catch (err) {
     res.status(500).json({ error: err.message })
   }

@@ -51,7 +51,6 @@ async function onMessage(messages) {
       msg.message.imageMessage?.caption ||
       '[mídia]'
 
-    logger.info({ phone, content }, 'Mensagem recebida')
 
     // Find if phone is in any active campaign
     const campaignContact = await prisma.campaignContact.findFirst({
