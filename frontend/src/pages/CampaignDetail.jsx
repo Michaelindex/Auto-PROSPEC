@@ -30,8 +30,11 @@ export function CampaignDetail() {
   const [statusFilter, setStatusFilter] = useState('')
   const [replies, setReplies] = useState([])
   const [liveLogs, setLiveLogs] = useState([])
+  const [logsLoading, setLogsLoading] = useState(true)
   const [tab, setTab] = useState('logs')
   const logsEndRef = useRef(null)
+  // Track IDs already shown to avoid duplicates when WS fires for a log we already loaded
+  const shownLogIds = useRef(new Set())
 
   async function load() {
     try {
@@ -51,10 +54,38 @@ export function CampaignDetail() {
     setReplies(res.data)
   }
 
+  async function loadLogs() {
+    setLogsLoading(true)
+    try {
+      // Load up to 500 most recent logs from DB
+      const res = await getCampaignLogs(id, { page: 1, limit: 500 })
+      const dbLogs = res.data.logs.map(log => ({
+        id: log.id,
+        type: log.status === 'sent' ? 'sent' : 'failed',
+        phone: log.phone,
+        firstName: null,
+        messageOrder: log.messageOrder,
+        variationContent: log.variationUsed,
+        errorType: log.errorType,
+        errorMessage: log.errorMessage,
+        sentAt: log.sentAt
+      }))
+      // Register IDs so WebSocket doesn't duplicate them
+      dbLogs.forEach(l => shownLogIds.current.add(l.id))
+      // DB returns newest first — keep that order
+      setLiveLogs(dbLogs.slice(0, MAX_LIVE_LOGS))
+    } catch {
+      // silently ignore
+    } finally {
+      setLogsLoading(false)
+    }
+  }
+
   useEffect(() => {
     load()
     loadContacts()
     loadReplies()
+    loadLogs()
 
     function onStatus({ campaignId, status }) {
       if (campaignId !== id) return
@@ -66,17 +97,14 @@ export function CampaignDetail() {
     }
     function onSent(data) {
       if (data.campaignId !== id) return
-      setLiveLogs(l => {
-        const entry = { type: 'sent', ...data, id: Date.now() + Math.random() }
-        return [entry, ...l].slice(0, MAX_LIVE_LOGS)
-      })
+      // Use a temporary id for WS events (they won't collide with DB UUIDs)
+      const wsId = `ws-${Date.now()}-${Math.random()}`
+      setLiveLogs(l => [{ type: 'sent', ...data, id: wsId }, ...l].slice(0, MAX_LIVE_LOGS))
     }
     function onFailed(data) {
       if (data.campaignId !== id) return
-      setLiveLogs(l => {
-        const entry = { type: 'failed', ...data, id: Date.now() + Math.random() }
-        return [entry, ...l].slice(0, MAX_LIVE_LOGS)
-      })
+      const wsId = `ws-${Date.now()}-${Math.random()}`
+      setLiveLogs(l => [{ type: 'failed', ...data, id: wsId }, ...l].slice(0, MAX_LIVE_LOGS))
     }
     function onReply(data) {
       if (data.campaignId !== id) return
@@ -226,9 +254,23 @@ export function CampaignDetail() {
       {tab === 'logs' && (
         <Card>
           <CardContent className="p-0">
+            <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b">
+              <span className="text-xs text-muted-foreground font-medium">
+                {logsLoading ? 'Carregando histórico...' : `${liveLogs.length} registro(s)`}
+              </span>
+              <button
+                className="text-xs text-muted-foreground hover:text-foreground underline"
+                onClick={loadLogs}
+              >
+                Recarregar
+              </button>
+            </div>
             <div className="max-h-96 overflow-y-auto font-mono text-xs p-4 space-y-1">
-              {liveLogs.length === 0 && (
-                <p className="text-muted-foreground text-center py-8">Os logs aparecerão aqui quando a campanha estiver rodando...</p>
+              {logsLoading && (
+                <p className="text-muted-foreground text-center py-8">Carregando logs...</p>
+              )}
+              {!logsLoading && liveLogs.length === 0 && (
+                <p className="text-muted-foreground text-center py-8">Nenhum envio registrado ainda.</p>
               )}
               {liveLogs.map(log => (
                 <div key={log.id} className={`flex items-start gap-2 ${log.type === 'sent' ? 'text-green-700' : 'text-red-600'}`}>
@@ -238,8 +280,8 @@ export function CampaignDetail() {
                   }
                   <span>
                     {log.type === 'sent'
-                      ? `Enviado para ${log.firstName} (${log.phone}) — msg ${log.messageOrder} — ${new Date(log.sentAt).toLocaleTimeString('pt-BR')}`
-                      : `Falhou ${log.phone} — ${log.errorType} — ${new Date().toLocaleTimeString('pt-BR')}`
+                      ? `✅ Enviado para ${log.firstName || log.phone} (${log.phone}) — msg ${log.messageOrder} — ${new Date(log.sentAt).toLocaleTimeString('pt-BR')}`
+                      : `❌ Falhou ${log.phone} — ${log.errorType || 'erro desconhecido'} — ${new Date(log.sentAt || Date.now()).toLocaleTimeString('pt-BR')}`
                     }
                   </span>
                 </div>
