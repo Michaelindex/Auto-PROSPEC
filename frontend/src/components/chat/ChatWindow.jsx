@@ -98,6 +98,15 @@ export function ChatWindow({ campaignId, contactId }) {
     }).catch(() => {})
   }, [campaignId, contactId])
 
+  // Conversa aberta: marca como lida sempre que chega uma nova mensagem recebida
+  const lastMsg = msgs[msgs.length - 1]
+  useEffect(() => {
+    if (!lastMsg || lastMsg.direction !== 'in') return
+    markChatRead(campaignId, contactId).then(() => {
+      updateContactUnread(campaignId, contactId, 0)
+    }).catch(() => {})
+  }, [lastMsg?.id])
+
   // Auto-scroll to bottom when new messages arrive (only if already near bottom)
   useEffect(() => {
     const el = containerRef.current

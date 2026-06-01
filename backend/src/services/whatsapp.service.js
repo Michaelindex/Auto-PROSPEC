@@ -184,8 +184,20 @@ async function onMessage(messages) {
       }
 
       if (allCampaignContacts.length > 0) {
-        const agg = await prisma.campaignContact.aggregate({ _sum: { unreadCount: true } })
-        io?.emit('chat:unread_updated', { totalUnread: agg._sum.unreadCount || 0 })
+        const totalAgg = await prisma.campaignContact.aggregate({ _sum: { unreadCount: true } })
+        const totalUnread = totalAgg._sum.unreadCount || 0
+        const campaignIds = [...new Set(allCampaignContacts.map(cc => cc.campaignId))]
+        for (const cId of campaignIds) {
+          const campaignAgg = await prisma.campaignContact.aggregate({
+            where: { campaignId: cId },
+            _sum: { unreadCount: true }
+          })
+          io?.emit('chat:unread_updated', {
+            campaignId: cId,
+            campaignUnread: campaignAgg._sum.unreadCount || 0,
+            totalUnread
+          })
+        }
       }
     } catch (err) {
       logger.error({ err: err.message, stack: err.stack }, '[chat] Erro ao processar mensagem recebida')

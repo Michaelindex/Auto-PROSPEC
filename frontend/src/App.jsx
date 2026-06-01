@@ -22,7 +22,7 @@ function AppBootstrap() {
   const {
     setCampaignsSummary, setTotalUnread,
     appendMessage, updateContactLastMessage, updateContactUnread,
-    updateMessageStatus
+    updateMessageStatus, updateCampaignUnread
   } = useChatStore()
 
   useEffect(() => {
@@ -56,8 +56,11 @@ function AppBootstrap() {
       }
     })
 
-    socket.on('chat:unread_updated', ({ totalUnread, campaignId, contactId, unreadCount }) => {
-      setTotalUnread(totalUnread)
+    socket.on('chat:unread_updated', ({ totalUnread, campaignId, contactId, unreadCount, campaignUnread }) => {
+      if (totalUnread !== undefined) setTotalUnread(totalUnread)
+      if (campaignId && campaignUnread !== undefined) {
+        updateCampaignUnread(campaignId, campaignUnread)
+      }
       if (campaignId && contactId && unreadCount !== undefined) {
         updateContactUnread(campaignId, contactId, unreadCount)
       }

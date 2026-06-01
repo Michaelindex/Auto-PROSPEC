@@ -276,10 +276,18 @@ export async function markConversationRead(campaignId, contactId) {
     data: { unreadCount: 0, lastReadAt: new Date() }
   })
 
-  const agg = await prisma.campaignContact.aggregate({ _sum: { unreadCount: true } })
-  const totalUnread = agg._sum.unreadCount || 0
+  const [campaignAgg, totalAgg] = await Promise.all([
+    prisma.campaignContact.aggregate({ where: { campaignId }, _sum: { unreadCount: true } }),
+    prisma.campaignContact.aggregate({ _sum: { unreadCount: true } })
+  ])
 
-  io?.emit('chat:unread_updated', { campaignId, contactId, unreadCount: 0, totalUnread })
+  io?.emit('chat:unread_updated', {
+    campaignId,
+    contactId,
+    unreadCount: 0,
+    campaignUnread: campaignAgg._sum.unreadCount || 0,
+    totalUnread: totalAgg._sum.unreadCount || 0
+  })
 }
 
 export async function refreshContactProfilePicture(contactId) {
