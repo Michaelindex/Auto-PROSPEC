@@ -16,7 +16,12 @@
       "Bash(node -e \"const b=require\\('@whiskeysockets/baileys'\\); console.log\\('isLidUser:', typeof b.isLidUser\\); const d=b.jidDecode\\('62874294734913@lid'\\); console.log\\('jidDecode @lid:', JSON.stringify\\(d\\)\\)\")",
       "Bash(dir /B node_modules\\\\@whiskeysockets\\\\baileys\\\\lib\\\\WAUSync\\\\Protocols)",
       "Bash(dir /B)",
-      "Bash(node --check src/services/campaign.service.js)"
+      "Bash(node --check src/services/campaign.service.js)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Administrador\\\\Documents\\\\GitHub\\\\Auto-PROSPEC\" -Recurse -Force)",
+      "Bash(Select-Object FullName)",
+      "Bash(ConvertTo-Csv -NoTypeInformation)",
+      "Bash(Select-Object -Skip 1)",
+      "Bash(Sort-Object)"
     ]
   }
 }
