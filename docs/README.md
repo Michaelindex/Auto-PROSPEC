@@ -197,8 +197,10 @@ model Settings {
   maxConcurrentCampaigns Int     @default(1)
   dailyLimitEnabled     Boolean  @default(false)
   dailyLimitValue       Int      @default(200)
-  defaultMinDelaySec    Int      @default(30)
-  defaultMaxDelaySec    Int      @default(90)
+  defaultContactDelayMinSec Int  @default(30)   // entre contatos
+  defaultContactDelayMaxSec Int  @default(90)
+  defaultMsgDelayMinSec     Int  @default(5)    // entre mensagens do mesmo contato
+  defaultMsgDelayMaxSec     Int  @default(15)
   simulateTyping        Boolean  @default(true)
   updatedAt             DateTime @updatedAt
 }
@@ -210,8 +212,10 @@ model Campaign {
   // draft | scheduled | queued | running | paused | completed | failed
   flowMode        String
   // "sequential_per_contact" | "broadcast" | "shuffled"
-  minDelaySec     Int
-  maxDelaySec     Int
+  contactDelayMinSec Int   @default(30)   // espera para trocar de contato (faixa aleatória)
+  contactDelayMaxSec Int   @default(90)
+  msgDelayMinSec     Int   @default(5)    // espera entre mensagens do mesmo contato (faixa aleatória)
+  msgDelayMaxSec     Int   @default(15)
   simulateTyping  Boolean  @default(true)
   scheduledAt     DateTime?
   startedAt       DateTime?
@@ -371,7 +375,8 @@ nome,numero
 | Variações por mensagem | array por mensagem | sim |
 | Imagem única | upload PNG/JPG (máx 5MB) | não |
 | Legenda da imagem | texto | não |
-| Delay mínimo/máximo (seg) | número | sim |
+| Delay troca de contato — min/máx (seg) | número | sim |
+| Delay entre mensagens do mesmo contato — min/máx (seg) | número | sim |
 | Simular digitando | toggle | — |
 | Parar se cliente responder | toggle | — |
 | Quando disparar | agora / agendado | sim |
@@ -400,8 +405,9 @@ para cada contato C em ordem aleatória:
     se simulateTyping: enviar presence "composing" antes do envio
     registrar SendLog
     incrementar DailyCounter
-    delay aleatório entre minDelaySec e maxDelaySec
+    se ainda há próxima mensagem: delay aleatório entre msgDelayMinSec e msgDelayMaxSec
   marcar C.status = completed
+  delay aleatório entre contactDelayMinSec e contactDelayMaxSec (antes do próximo contato)
 ```
 
 **Modo `broadcast`:** itera mensagens externamente, contatos internamente.

@@ -116,14 +116,30 @@ export function Settings() {
       <Card>
         <CardHeader><CardTitle className="text-base">Delays Padrão</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Delay mínimo padrão (s)</Label>
-              <Input type="number" min={5} className="mt-1" value={form.defaultMinDelaySec} onChange={e => updateField('defaultMinDelaySec', Number(e.target.value))} />
+          <div>
+            <Label className="text-sm font-medium">Troca de contato (s)</Label>
+            <div className="grid grid-cols-2 gap-4 mt-1">
+              <div>
+                <Label className="text-xs">Mínimo</Label>
+                <Input type="number" min={1} className="mt-1" value={form.defaultContactDelayMinSec} onChange={e => updateField('defaultContactDelayMinSec', Number(e.target.value))} />
+              </div>
+              <div>
+                <Label className="text-xs">Máximo</Label>
+                <Input type="number" min={2} className="mt-1" value={form.defaultContactDelayMaxSec} onChange={e => updateField('defaultContactDelayMaxSec', Number(e.target.value))} />
+              </div>
             </div>
-            <div>
-              <Label>Delay máximo padrão (s)</Label>
-              <Input type="number" min={10} className="mt-1" value={form.defaultMaxDelaySec} onChange={e => updateField('defaultMaxDelaySec', Number(e.target.value))} />
+          </div>
+          <div>
+            <Label className="text-sm font-medium">Entre mensagens do mesmo contato (s)</Label>
+            <div className="grid grid-cols-2 gap-4 mt-1">
+              <div>
+                <Label className="text-xs">Mínimo</Label>
+                <Input type="number" min={1} className="mt-1" value={form.defaultMsgDelayMinSec} onChange={e => updateField('defaultMsgDelayMinSec', Number(e.target.value))} />
+              </div>
+              <div>
+                <Label className="text-xs">Máximo</Label>
+                <Input type="number" min={2} className="mt-1" value={form.defaultMsgDelayMaxSec} onChange={e => updateField('defaultMsgDelayMaxSec', Number(e.target.value))} />
+              </div>
             </div>
           </div>
           <div className="flex items-center justify-between">

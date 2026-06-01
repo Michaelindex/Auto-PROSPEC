@@ -55,15 +55,19 @@ router.post('/', upload.single('image'), async (req, res) => {
     const body = typeof req.body.data === 'string' ? JSON.parse(req.body.data) : req.body
 
     const {
-      name, flowMode, minDelaySec, maxDelaySec, simulateTyping,
-      stopOnReply, scheduledAt, messages, contactIds, imageCaption
+      name, flowMode,
+      contactDelayMinSec, contactDelayMaxSec, msgDelayMinSec, msgDelayMaxSec,
+      simulateTyping, stopOnReply, scheduledAt, messages, contactIds, imageCaption
     } = body
 
     if (!name || !flowMode || !messages?.length || !contactIds?.length) {
       return res.status(400).json({ error: 'Campos obrigatórios faltando' })
     }
-    if (Number(minDelaySec) >= Number(maxDelaySec)) {
-      return res.status(400).json({ error: 'minDelaySec deve ser menor que maxDelaySec' })
+    if (Number(contactDelayMinSec) >= Number(contactDelayMaxSec)) {
+      return res.status(400).json({ error: 'Delay mínimo de contato deve ser menor que o máximo' })
+    }
+    if (Number(msgDelayMinSec) >= Number(msgDelayMaxSec)) {
+      return res.status(400).json({ error: 'Delay mínimo de mensagem deve ser menor que o máximo' })
     }
 
     const imagePath = req.file ? req.file.path : null
@@ -72,8 +76,10 @@ router.post('/', upload.single('image'), async (req, res) => {
       data: {
         name,
         flowMode,
-        minDelaySec: Number(minDelaySec),
-        maxDelaySec: Number(maxDelaySec),
+        contactDelayMinSec: Number(contactDelayMinSec),
+        contactDelayMaxSec: Number(contactDelayMaxSec),
+        msgDelayMinSec: Number(msgDelayMinSec),
+        msgDelayMaxSec: Number(msgDelayMaxSec),
         simulateTyping: simulateTyping !== false,
         stopOnReply: stopOnReply !== false,
         scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
@@ -123,7 +129,7 @@ router.put('/:id', upload.single('image'), async (req, res) => {
     }
 
     const body = typeof req.body.data === 'string' ? JSON.parse(req.body.data) : req.body
-    const { name, flowMode, minDelaySec, maxDelaySec, simulateTyping, stopOnReply, scheduledAt, messages, imageCaption, removeImage } = body
+    const { name, flowMode, contactDelayMinSec, contactDelayMaxSec, msgDelayMinSec, msgDelayMaxSec, simulateTyping, stopOnReply, scheduledAt, messages, imageCaption, removeImage } = body
 
     let imagePath
     if (req.file) {
@@ -153,8 +159,10 @@ router.put('/:id', upload.single('image'), async (req, res) => {
       data: {
         ...(name && { name }),
         ...(flowMode && { flowMode }),
-        ...(minDelaySec !== undefined && { minDelaySec: Number(minDelaySec) }),
-        ...(maxDelaySec !== undefined && { maxDelaySec: Number(maxDelaySec) }),
+        ...(contactDelayMinSec !== undefined && { contactDelayMinSec: Number(contactDelayMinSec) }),
+        ...(contactDelayMaxSec !== undefined && { contactDelayMaxSec: Number(contactDelayMaxSec) }),
+        ...(msgDelayMinSec !== undefined && { msgDelayMinSec: Number(msgDelayMinSec) }),
+        ...(msgDelayMaxSec !== undefined && { msgDelayMaxSec: Number(msgDelayMaxSec) }),
         ...(simulateTyping !== undefined && { simulateTyping }),
         ...(stopOnReply !== undefined && { stopOnReply }),
         ...(scheduledAt !== undefined && { scheduledAt: scheduledAt ? new Date(scheduledAt) : null }),

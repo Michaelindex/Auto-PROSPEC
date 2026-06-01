@@ -13,23 +13,27 @@ router.get('/', async (req, res) => {
 
 router.put('/', async (req, res) => {
   const {
-    mode, maxConcurrentCampaigns, dailyLimitEnabled,
-    dailyLimitValue, defaultMinDelaySec, defaultMaxDelaySec, simulateTyping
+    mode, maxConcurrentCampaigns, dailyLimitEnabled, dailyLimitValue,
+    defaultContactDelayMinSec, defaultContactDelayMaxSec,
+    defaultMsgDelayMinSec, defaultMsgDelayMaxSec, simulateTyping
   } = req.body
 
   const settings = await prisma.settings.upsert({
     where: { id: 1 },
     create: {
-      mode, maxConcurrentCampaigns, dailyLimitEnabled,
-      dailyLimitValue, defaultMinDelaySec, defaultMaxDelaySec, simulateTyping
+      mode, maxConcurrentCampaigns, dailyLimitEnabled, dailyLimitValue,
+      defaultContactDelayMinSec, defaultContactDelayMaxSec,
+      defaultMsgDelayMinSec, defaultMsgDelayMaxSec, simulateTyping
     },
     update: {
       ...(mode !== undefined && { mode }),
       ...(maxConcurrentCampaigns !== undefined && { maxConcurrentCampaigns: Number(maxConcurrentCampaigns) }),
       ...(dailyLimitEnabled !== undefined && { dailyLimitEnabled }),
       ...(dailyLimitValue !== undefined && { dailyLimitValue: Number(dailyLimitValue) }),
-      ...(defaultMinDelaySec !== undefined && { defaultMinDelaySec: Number(defaultMinDelaySec) }),
-      ...(defaultMaxDelaySec !== undefined && { defaultMaxDelaySec: Number(defaultMaxDelaySec) }),
+      ...(defaultContactDelayMinSec !== undefined && { defaultContactDelayMinSec: Number(defaultContactDelayMinSec) }),
+      ...(defaultContactDelayMaxSec !== undefined && { defaultContactDelayMaxSec: Number(defaultContactDelayMaxSec) }),
+      ...(defaultMsgDelayMinSec !== undefined && { defaultMsgDelayMinSec: Number(defaultMsgDelayMinSec) }),
+      ...(defaultMsgDelayMaxSec !== undefined && { defaultMsgDelayMaxSec: Number(defaultMsgDelayMaxSec) }),
       ...(simulateTyping !== undefined && { simulateTyping })
     }
   })

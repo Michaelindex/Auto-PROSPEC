@@ -13,8 +13,10 @@ model Settings {
   maxConcurrentCampaigns Int      @default(1)
   dailyLimitEnabled      Boolean  @default(false)
   dailyLimitValue        Int      @default(200)
-  defaultMinDelaySec     Int      @default(30)
-  defaultMaxDelaySec     Int      @default(90)
+  defaultContactDelayMinSec Int   @default(30)
+  defaultContactDelayMaxSec Int   @default(90)
+  defaultMsgDelayMinSec     Int   @default(5)
+  defaultMsgDelayMaxSec     Int   @default(15)
   simulateTyping         Boolean  @default(true)
   updatedAt              DateTime @updatedAt
 }
@@ -24,8 +26,10 @@ model Campaign {
   name           String
   status         String    @default("draft")
   flowMode       String
-  minDelaySec    Int
-  maxDelaySec    Int
+  contactDelayMinSec Int   @default(30)
+  contactDelayMaxSec Int   @default(90)
+  msgDelayMinSec     Int   @default(5)
+  msgDelayMaxSec     Int   @default(15)
   simulateTyping Boolean   @default(true)
   scheduledAt    DateTime?
   startedAt      DateTime?

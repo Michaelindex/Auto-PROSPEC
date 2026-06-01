@@ -20,8 +20,10 @@ export function EditCampaign() {
 
   const [form, setForm] = useState({
     name: '',
-    minDelaySec: 30,
-    maxDelaySec: 90,
+    contactDelayMinSec: 30,
+    contactDelayMaxSec: 90,
+    msgDelayMinSec: 5,
+    msgDelayMaxSec: 15,
     simulateTyping: true,
     stopOnReply: true,
     imageCaption: ''
@@ -44,8 +46,10 @@ export function EditCampaign() {
         }
         setForm({
           name: c.name,
-          minDelaySec: c.minDelaySec,
-          maxDelaySec: c.maxDelaySec,
+          contactDelayMinSec: c.contactDelayMinSec,
+          contactDelayMaxSec: c.contactDelayMaxSec,
+          msgDelayMinSec: c.msgDelayMinSec,
+          msgDelayMaxSec: c.msgDelayMaxSec,
           simulateTyping: c.simulateTyping,
           stopOnReply: c.stopOnReply,
           imageCaption: c.imageCaption || ''
@@ -117,7 +121,8 @@ export function EditCampaign() {
   async function handleSubmit(e) {
     e.preventDefault()
     if (!form.name.trim()) return toast.error('Nome obrigatório')
-    if (Number(form.minDelaySec) >= Number(form.maxDelaySec)) return toast.error('Delay mínimo deve ser menor que máximo')
+    if (Number(form.contactDelayMinSec) >= Number(form.contactDelayMaxSec)) return toast.error('Delay mínimo de troca de contato deve ser menor que o máximo')
+    if (Number(form.msgDelayMinSec) >= Number(form.msgDelayMaxSec)) return toast.error('Delay mínimo entre mensagens deve ser menor que o máximo')
     if (messages.length === 0) return toast.error('Adicione pelo menos uma mensagem')
     if (messages.some(m => m.variations.every(v => !v.content.trim()))) {
       return toast.error('Todas as mensagens precisam de pelo menos uma variação com conteúdo')
@@ -129,8 +134,10 @@ export function EditCampaign() {
       if (newImageFile) fd.append('image', newImageFile)
       fd.append('data', JSON.stringify({
         name: form.name,
-        minDelaySec: Number(form.minDelaySec),
-        maxDelaySec: Number(form.maxDelaySec),
+        contactDelayMinSec: Number(form.contactDelayMinSec),
+        contactDelayMaxSec: Number(form.contactDelayMaxSec),
+        msgDelayMinSec: Number(form.msgDelayMinSec),
+        msgDelayMaxSec: Number(form.msgDelayMaxSec),
         simulateTyping: form.simulateTyping,
         stopOnReply: form.stopOnReply,
         imageCaption: form.imageCaption || null,
@@ -275,14 +282,32 @@ export function EditCampaign() {
         <Card>
           <CardHeader><CardTitle className="text-base">Configurações de Envio</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Delay mínimo (segundos)</Label>
-                <Input type="number" className="mt-1" min={5} value={form.minDelaySec} onChange={e => updateField('minDelaySec', e.target.value)} />
+            <div>
+              <Label className="text-sm font-medium">Delay para trocar de contato (segundos)</Label>
+              <p className="text-xs text-muted-foreground mb-2">Tempo de espera antes de começar o próximo contato — sorteado aleatoriamente nesta faixa.</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs">Mínimo</Label>
+                  <Input type="number" className="mt-1" min={1} value={form.contactDelayMinSec} onChange={e => updateField('contactDelayMinSec', e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Máximo</Label>
+                  <Input type="number" className="mt-1" min={2} value={form.contactDelayMaxSec} onChange={e => updateField('contactDelayMaxSec', e.target.value)} />
+                </div>
               </div>
-              <div>
-                <Label>Delay máximo (segundos)</Label>
-                <Input type="number" className="mt-1" min={10} value={form.maxDelaySec} onChange={e => updateField('maxDelaySec', e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Delay entre mensagens do mesmo contato (segundos)</Label>
+              <p className="text-xs text-muted-foreground mb-2">Tempo de espera entre uma mensagem e a próxima para o mesmo contato — sorteado aleatoriamente nesta faixa.</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs">Mínimo</Label>
+                  <Input type="number" className="mt-1" min={1} value={form.msgDelayMinSec} onChange={e => updateField('msgDelayMinSec', e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Máximo</Label>
+                  <Input type="number" className="mt-1" min={2} value={form.msgDelayMaxSec} onChange={e => updateField('msgDelayMaxSec', e.target.value)} />
+                </div>
               </div>
             </div>
             <div className="flex items-center justify-between">

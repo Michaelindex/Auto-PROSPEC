@@ -252,7 +252,7 @@ async function processContact(campaign, campaignContact, messages, settings, isT
     }
 
     if (message.order < messages.length) {
-      await randomDelay(campaign.minDelaySec, campaign.maxDelaySec)
+      await randomDelay(campaign.msgDelayMinSec, campaign.msgDelayMaxSec)
     }
   }
 
@@ -318,9 +318,7 @@ async function runSequential(campaignId, settings, isTest) {
 
     await processContact(currentCampaign, cc, messages, settings, isTest)
 
-    if (messages.length > 1) {
-      await randomDelay(campaign.minDelaySec, campaign.maxDelaySec)
-    }
+    await randomDelay(campaign.contactDelayMinSec, campaign.contactDelayMaxSec)
   }
 }
 
@@ -349,7 +347,7 @@ async function runBroadcast(campaignId, settings, isTest) {
       if (!['running'].includes(currentCampaign.status)) break
 
       await processContact(currentCampaign, cc, [message], settings, isTest)
-      await randomDelay(campaign.minDelaySec, campaign.maxDelaySec)
+      await randomDelay(campaign.contactDelayMinSec, campaign.contactDelayMaxSec)
     }
   }
 }
@@ -388,7 +386,7 @@ async function runShuffled(campaignId, settings, isTest) {
     if (!['pending', 'in_progress'].includes(fresh.status)) continue
 
     await processContact(currentCampaign, item.cc, [item.message], settings, isTest)
-    await randomDelay(campaign.minDelaySec, campaign.maxDelaySec)
+    await randomDelay(campaign.contactDelayMinSec, campaign.contactDelayMaxSec)
   }
 }
 
@@ -415,8 +413,10 @@ export async function runCampaign(campaignId) {
       totalMessages: campaign.messages.length,
       isTest,
       testPhone: isTest ? TEST_PHONE_NUMBER : null,
-      minDelaySec: campaign.minDelaySec,
-      maxDelaySec: campaign.maxDelaySec,
+      contactDelayMinSec: campaign.contactDelayMinSec,
+      contactDelayMaxSec: campaign.contactDelayMaxSec,
+      msgDelayMinSec: campaign.msgDelayMinSec,
+      msgDelayMaxSec: campaign.msgDelayMaxSec,
       simulateTyping: campaign.simulateTyping,
       hasImage: !!campaign.imagePath,
       imagePath: campaign.imagePath || null
