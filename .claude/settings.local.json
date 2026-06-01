@@ -1,7 +1,19 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(Get-Content *)"
+      "PowerShell(Get-Content *)",
+      "Bash(npx prisma *)",
+      "Bash(node --check src/services/chat.service.js)",
+      "Bash(node --check src/controllers/chat.controller.js)",
+      "Bash(node --check src/routes/chat.routes.js)",
+      "Bash(node --check src/services/whatsapp.service.js)",
+      "Bash(node --check src/index.js)",
+      "Bash(node --check src/routes/contacts.routes.js)",
+      "Bash(node -e ' *)",
+      "Bash(findstr /I \"LOG_LEVEL NODE_ENV\")",
+      "Bash(node -e \"const p=require\\('@whiskeysockets/baileys/package.json'\\); console.log\\('baileys version:', p.version\\)\")",
+      "Bash(node -e \"const b=require\\('@whiskeysockets/baileys'\\); console.log\\('exports com lid/jid:', Object.keys\\(b\\).filter\\(k=>/lid|jid|Pn|decode/i.test\\(k\\)\\).join\\(', '\\)\\)\")",
+      "Bash(node -e \"const b=require\\('@whiskeysockets/baileys'\\); console.log\\('isLidUser:', typeof b.isLidUser\\); const d=b.jidDecode\\('62874294734913@lid'\\); console.log\\('jidDecode @lid:', JSON.stringify\\(d\\)\\)\")"
     ]
   }
 }

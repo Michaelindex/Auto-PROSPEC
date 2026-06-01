@@ -38,4 +38,15 @@ export const exportLogs = (id) => `${api.defaults.baseURL}/campaigns/${id}/expor
 export const exportErrors = (id) => `${api.defaults.baseURL}/campaigns/${id}/export/errors.csv`
 export const reorderQueue = (orderedIds) => api.put('/campaigns/queue/reorder', { orderedIds })
 
+// Chat / Respostas
+export const getChatSummary = () => api.get('/chat/summary')
+export const getChatContacts = (campaignId, params) => api.get(`/chat/${campaignId}/contacts`, { params })
+export const getChatMessages = (campaignId, contactId, params) => api.get(`/chat/${campaignId}/contacts/${contactId}/messages`, { params })
+export const sendChatMessage = (campaignId, contactId, formData) =>
+  api.post(`/chat/${campaignId}/contacts/${contactId}/messages`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+export const markChatRead = (campaignId, contactId) => api.post(`/chat/${campaignId}/contacts/${contactId}/read`)
+export const refreshContactProfilePicture = (contactId) => api.get(`/contacts/${contactId}/profile-picture/refresh`)
+
 export default api

@@ -40,52 +40,129 @@ export function getStatus() {
 
 async function onMessage(messages) {
   for (const msg of messages) {
+    // Log bruto ANTES de qualquer filtro — mostra toda mensagem que chega do WhatsApp
+    logger.info({
+      remoteJid: msg.key?.remoteJid,
+      senderPn: msg.key?.senderPn || null,
+      senderLid: msg.key?.senderLid || null,
+      participant: msg.key?.participant || null,
+      fromMe: msg.key?.fromMe,
+      pushName: msg.pushName || null,
+      hasMessage: !!msg.message
+    }, '[chat] >>> Mensagem BRUTA recebida do WhatsApp')
+
+    // Only process real incoming DM messages
     if (!msg.message || msg.key.fromMe) continue
-    if (isJidBroadcast(msg.key.remoteJid)) continue
 
-    const phone = '+' + msg.key.remoteJid.replace('@s.whatsapp.net', '').replace(/\D/g, '')
-    const fromName = msg.pushName || null
-    const content =
-      msg.message.conversation ||
-      msg.message.extendedTextMessage?.text ||
-      msg.message.imageMessage?.caption ||
-      '[mídia]'
+    // O WhatsApp passou a entregar DMs como @lid (sem o número). O telefone real
+    // vem em key.senderPn. Resolvemos o JID de telefone a partir do que estiver disponível.
+    const pnJid =
+      msg.key?.remoteJid?.endsWith('@s.whatsapp.net') ? msg.key.remoteJid :
+      msg.key?.senderPn?.endsWith('@s.whatsapp.net') ? msg.key.senderPn :
+      null
 
+    if (!pnJid) {
+      logger.warn({ remoteJid: msg.key?.remoteJid }, '[chat] Mensagem IGNORADA — sem telefone resolvível (grupo ou @lid sem senderPn)')
+      continue
+    }
 
-    // Find if phone is in any active campaign
-    const campaignContact = await prisma.campaignContact.findFirst({
-      where: {
-        contact: { phone },
-        status: { in: ['in_progress', 'completed', 'pending'] },
-        campaign: { status: { in: ['running', 'pausing', 'paused'] } }
-      },
-      include: { campaign: true }
-    })
+    try {
+      const phone = '+' + pnJid.replace('@s.whatsapp.net', '').replace(/\D/g, '')
+      const fromName = msg.pushName || null
+      const content =
+        msg.message.conversation ||
+        msg.message.extendedTextMessage?.text ||
+        msg.message.imageMessage?.caption ||
+        '[mídia]'
+      const whatsappMsgId = msg.key?.id || null
 
-    const campaignId = campaignContact?.campaignId || null
+      logger.info({ phone, whatsappMsgId }, '[chat] Mensagem recebida')
 
-    await prisma.incomingMessage.create({
-      data: { fromPhone: phone, fromName, content, campaignId }
-    })
-
-    if (campaignContact) {
-      await prisma.campaignContact.update({
-        where: { id: campaignContact.id },
-        data: { repliedAt: new Date(), status: 'replied' }
+      // Find active campaign contact for existing reply tracking
+      const activeCampaignContact = await prisma.campaignContact.findFirst({
+        where: {
+          contact: { phone },
+          status: { in: ['in_progress', 'completed', 'pending'] },
+          campaign: { status: { in: ['running', 'pausing', 'paused'] } }
+        },
+        include: { campaign: true }
       })
 
-      await prisma.campaign.update({
-        where: { id: campaignId },
-        data: { repliedCount: { increment: 1 } }
+      const campaignId = activeCampaignContact?.campaignId || null
+
+      await prisma.incomingMessage.create({
+        data: { fromPhone: phone, fromName, content, campaignId }
       })
 
-      io?.emit('campaign:reply_received', {
-        campaignId,
-        contactId: campaignContact.contactId,
-        phone,
-        content,
-        receivedAt: new Date().toISOString()
+      if (activeCampaignContact) {
+        await prisma.campaignContact.update({
+          where: { id: activeCampaignContact.id },
+          data: { repliedAt: new Date(), status: 'replied' }
+        })
+        await prisma.campaign.update({
+          where: { id: campaignId },
+          data: { repliedCount: { increment: 1 } }
+        })
+        io?.emit('campaign:reply_received', {
+          campaignId,
+          contactId: activeCampaignContact.contactId,
+          phone,
+          content,
+          receivedAt: new Date().toISOString()
+        })
+      }
+
+      // Respostas module: update unread + save ManualMessage for ALL campaign contacts
+      const allCampaignContacts = await prisma.campaignContact.findMany({
+        where: { contact: { phone } }
       })
+
+      logger.info({ phone, count: allCampaignContacts.length }, '[chat] CampaignContacts encontrados')
+
+      for (const cc of allCampaignContacts) {
+        const [updatedCC, manualMsg] = await Promise.all([
+          prisma.campaignContact.update({
+            where: { id: cc.id },
+            data: { unreadCount: { increment: 1 } },
+            select: { unreadCount: true }
+          }),
+          prisma.manualMessage.create({
+            data: {
+              campaignContactId: cc.id,
+              contactId: cc.contactId,
+              direction: 'in',
+              content,
+              whatsappMessageId: whatsappMsgId,
+              status: 'sent'
+            }
+          })
+        ])
+
+        io?.emit('chat:new_message', {
+          campaignId: cc.campaignId,
+          contactId: cc.contactId,
+          message: {
+            id: `mm-${manualMsg.id}`,
+            type: 'manual',
+            direction: 'in',
+            content,
+            mediaPath: null,
+            mediaType: null,
+            mediaCaption: null,
+            status: 'sent',
+            sentAt: manualMsg.sentAt.toISOString(),
+            isAutomated: false
+          },
+          unreadCount: updatedCC.unreadCount
+        })
+      }
+
+      if (allCampaignContacts.length > 0) {
+        const agg = await prisma.campaignContact.aggregate({ _sum: { unreadCount: true } })
+        io?.emit('chat:unread_updated', { totalUnread: agg._sum.unreadCount || 0 })
+      }
+    } catch (err) {
+      logger.error({ err: err.message, stack: err.stack }, '[chat] Erro ao processar mensagem recebida')
     }
   }
 }
@@ -144,8 +221,44 @@ export async function connectWhatsApp() {
       }
     })
 
-    sock.ev.on('messages.upsert', async ({ messages, type }) => {
-      if (type === 'notify') await onMessage(messages)
+    sock.ev.on('messages.upsert', ({ messages, type }) => {
+      if (type === 'notify') onMessage(messages).catch(err =>
+        logger.error({ err: err.message }, '[chat] Falha não tratada em onMessage')
+      )
+    })
+
+    sock.ev.on('message-receipt.update', async updates => {
+      try {
+        for (const { key, receipt } of updates) {
+          if (!key?.id || !receipt) continue
+          // Baileys 6.x uses timestamps instead of a .type field
+          const status =
+            (receipt.readTimestamp || receipt.playedTimestamp) ? 'read' :
+            receipt.deliveryTimestamp ? 'delivered' : null
+          if (!status) continue
+          try {
+            const msg = await prisma.manualMessage.findFirst({
+              where: { whatsappMessageId: key.id, direction: 'out' }
+            })
+            if (!msg) continue
+            const updateData = { status }
+            if (status === 'delivered' && !msg.deliveredAt) updateData.deliveredAt = new Date()
+            if (status === 'read' && !msg.readAt) updateData.readAt = new Date()
+            await prisma.manualMessage.update({ where: { id: msg.id }, data: updateData })
+            io?.emit('chat:message_status', {
+              messageId: `mm-${msg.id}`,
+              campaignContactId: msg.campaignContactId,
+              status,
+              deliveredAt: updateData.deliveredAt?.toISOString(),
+              readAt: updateData.readAt?.toISOString()
+            })
+          } catch (err) {
+            logger.warn({ err: err.message }, 'Erro ao processar receipt de mensagem')
+          }
+        }
+      } catch (err) {
+        logger.warn({ err: err.message }, 'Erro no handler message-receipt.update')
+      }
     })
   } catch (err) {
     isConnecting = false

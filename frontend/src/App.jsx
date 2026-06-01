@@ -9,32 +9,67 @@ import { CampaignDetail } from './pages/CampaignDetail'
 import { EditCampaign } from './pages/EditCampaign'
 import { Contacts } from './pages/Contacts'
 import { Settings } from './pages/Settings'
-import { getWhatsAppStatus, getSettings } from './services/api'
+import { Respostas } from './pages/Respostas'
+import { getWhatsAppStatus, getSettings, getChatSummary, markChatRead } from './services/api'
 import socket from './services/socket'
 import { useWhatsAppStore } from './store/useWhatsAppStore'
 import { useSettingsStore } from './store/useSettingsStore'
+import { useChatStore } from './store/useChatStore'
 
 function AppBootstrap() {
   const { setStatus, setQR, setConnected, setDisconnected } = useWhatsAppStore()
   const { setSettings } = useSettingsStore()
+  const {
+    setCampaignsSummary, setTotalUnread,
+    appendMessage, updateContactLastMessage, updateContactUnread,
+    updateMessageStatus
+  } = useChatStore()
 
   useEffect(() => {
-    // Load initial state
-    getWhatsAppStatus().then(res => {
-      setStatus(res.data)
-    }).catch(() => setDisconnected())
-
+    getWhatsAppStatus().then(res => setStatus(res.data)).catch(() => setDisconnected())
     getSettings().then(res => setSettings(res.data)).catch(() => {})
+    getChatSummary().then(res => setCampaignsSummary(res.data.campaigns)).catch(() => {})
 
-    // Socket events
     socket.on('whatsapp:qr', ({ qr }) => setQR(qr))
     socket.on('whatsapp:connected', ({ phone }) => setConnected(phone))
     socket.on('whatsapp:disconnected', () => setDisconnected())
+
+    socket.on('chat:new_message', ({ campaignId, contactId, message, unreadCount }) => {
+      if (message.direction !== 'in') return
+      const key = `${campaignId}-${contactId}`
+      const store = useChatStore.getState()
+      if (store.messages[key]) {
+        appendMessage(key, message)
+      }
+      updateContactLastMessage(campaignId, contactId, message)
+      updateContactUnread(campaignId, contactId, unreadCount)
+    })
+
+    socket.on('chat:message_status', ({ messageId, campaignContactId, status, deliveredAt, readAt }) => {
+      const store = useChatStore.getState()
+      for (const key of Object.keys(store.messages)) {
+        const found = store.messages[key]?.find(m => m.id === messageId)
+        if (found) {
+          updateMessageStatus(key, messageId, { status, deliveredAt, readAt })
+          break
+        }
+      }
+    })
+
+    socket.on('chat:unread_updated', ({ totalUnread, campaignId, contactId, unreadCount }) => {
+      setTotalUnread(totalUnread)
+      if (campaignId && contactId && unreadCount !== undefined) {
+        updateContactUnread(campaignId, contactId, unreadCount)
+      }
+    })
 
     return () => {
       socket.off('whatsapp:qr')
       socket.off('whatsapp:connected')
       socket.off('whatsapp:disconnected')
+      socket.off('chat:new_message')
+      socket.off('chat:message_status')
+      socket.off('chat:unread_updated')
     }
   }, [])
 
@@ -55,6 +90,8 @@ export default function App() {
           <Route path="/campaigns/:id/edit" element={<EditCampaign />} />
           <Route path="/contacts" element={<Contacts />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/respostas" element={<Respostas />} />
+          <Route path="/respostas/:campaignId" element={<Respostas />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Route>
       </Routes>

@@ -1,18 +1,46 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { LayoutDashboard, Megaphone, Users, Settings, MessageSquare } from 'lucide-react'
+import { LayoutDashboard, Megaphone, Users, Settings, MessageSquare, MessageCircle } from 'lucide-react'
 import { ConnectionStatus } from './ConnectionStatus'
 import { ModeSwitch } from './ModeSwitch'
 import { QRCodeModal } from './QRCodeModal'
+import { useChatStore } from '@/store/useChatStore'
 import { cn } from '@/lib/utils'
 
-const navItems = [
+const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/campaigns', label: 'Campanhas', icon: Megaphone },
   { to: '/contacts', label: 'Contatos', icon: Users },
   { to: '/settings', label: 'Configurações', icon: Settings }
 ]
 
+function NavItem({ to, label, icon: Icon, end, badge }) {
+  return (
+    <NavLink
+      to={to}
+      end={end}
+      className={({ isActive }) =>
+        cn(
+          'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
+          isActive
+            ? 'bg-primary text-primary-foreground'
+            : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+        )
+      }
+    >
+      <Icon className="h-4 w-4 shrink-0" />
+      <span className="flex-1">{label}</span>
+      {badge > 0 && (
+        <span className="h-5 min-w-5 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+          {badge > 99 ? '99+' : badge}
+        </span>
+      )}
+    </NavLink>
+  )
+}
+
 export function Layout() {
+  const { totalUnread } = useChatStore()
+
   return (
     <div className="flex h-screen bg-background overflow-hidden">
       {/* Sidebar */}
@@ -30,24 +58,15 @@ export function Layout() {
         </div>
 
         <nav className="flex-1 p-3 space-y-1">
-          {navItems.map(({ to, label, icon: Icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
-                  isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                )
-              }
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              {label}
-            </NavLink>
+          {NAV_ITEMS.map(item => (
+            <NavItem key={item.to} {...item} />
           ))}
+          <NavItem
+            to="/respostas"
+            label="Respostas"
+            icon={MessageCircle}
+            badge={totalUnread}
+          />
         </nav>
       </aside>
 

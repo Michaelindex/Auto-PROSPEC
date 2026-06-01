@@ -52,7 +52,7 @@ model Message {
   id         String @id @default(cuid())
   campaignId String
   order      Int
-  campaign   Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign   Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   variations MessageVariation[]
 
   @@unique([campaignId, order])
@@ -66,14 +66,17 @@ model MessageVariation {
 }
 
 model Contact {
-  id        String   @id @default(cuid())
-  phone     String   @unique
-  firstName String
-  rawName   String
-  type      String
-  createdAt DateTime @default(now())
+  id                      String    @id @default(cuid())
+  phone                   String    @unique
+  firstName               String
+  rawName                 String
+  type                    String
+  profilePictureUrl       String?
+  profilePictureUpdatedAt DateTime?
+  createdAt               DateTime  @default(now())
 
-  campaigns CampaignContact[]
+  campaigns      CampaignContact[]
+  manualMessages ManualMessage[]
 }
 
 model CampaignContact {
@@ -84,9 +87,12 @@ model CampaignContact {
   currentMsgOrder Int       @default(0)
   lastSentAt      DateTime?
   repliedAt       DateTime?
+  unreadCount     Int       @default(0)
+  lastReadAt      DateTime?
 
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  contact  Contact  @relation(fields: [contactId], references: [id])
+  campaign       Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact        Contact         @relation(fields: [contactId], references: [id])
+  manualMessages ManualMessage[]
 
   @@unique([campaignId, contactId])
 }
@@ -111,8 +117,8 @@ model IncomingMessage {
   fromPhone  String
   fromName   String?
   content    String
-  mediaType  String?  // 'image' | 'audio' | 'video' | 'sticker'
-  mediaPath  String?  // caminho local do arquivo de mídia baixado
+  mediaType  String?
+  mediaPath  String?
   campaignId String?
   receivedAt DateTime @default(now())
 }
@@ -120,4 +126,23 @@ model IncomingMessage {
 model DailyCounter {
   date      String @id
   sentCount Int    @default(0)
+}
+
+model ManualMessage {
+  id                String    @id @default(cuid())
+  campaignContactId String
+  contactId         String
+  direction         String
+  content           String?
+  mediaPath         String?
+  mediaType         String?
+  mediaCaption      String?
+  whatsappMessageId String?
+  status            String    @default("sent")
+  sentAt            DateTime  @default(now())
+  deliveredAt       DateTime?
+  readAt            DateTime?
+
+  campaignContact CampaignContact @relation(fields: [campaignContactId], references: [id], onDelete: Cascade)
+  contact         Contact         @relation(fields: [contactId], references: [id])
 }

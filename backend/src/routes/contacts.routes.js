@@ -5,6 +5,7 @@ import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import prisma from '../prisma/client.js'
 import { processCSV } from '../services/csv.service.js'
+import { refreshContactProfilePicture } from '../services/chat.service.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const uploadDir = resolve(__dirname, '../../uploads/csv')
@@ -42,6 +43,15 @@ router.get('/', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   await prisma.contact.delete({ where: { id: req.params.id } })
   res.json({ ok: true })
+})
+
+router.get('/:id/profile-picture/refresh', async (req, res) => {
+  try {
+    const url = await refreshContactProfilePicture(req.params.id)
+    res.json({ profilePictureUrl: url })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
 })
 
 export default router

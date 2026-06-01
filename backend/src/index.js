@@ -9,6 +9,7 @@ import logger from './utils/logger.js'
 import { PORT } from './config/env.js'
 import { connectWhatsApp, setSocketIO as waSetIO } from './services/whatsapp.service.js'
 import { setSocketIO as campaignSetIO, runCampaign } from './services/campaign.service.js'
+import { setSocketIO as chatSetIO } from './services/chat.service.js'
 import { setRunCampaignFn } from './services/queue.service.js'
 import { startScheduler } from './services/scheduler.service.js'
 import prisma from './prisma/client.js'
@@ -17,6 +18,7 @@ import whatsappRoutes from './routes/whatsapp.routes.js'
 import settingsRoutes from './routes/settings.routes.js'
 import contactsRoutes from './routes/contacts.routes.js'
 import campaignsRoutes from './routes/campaigns.routes.js'
+import chatRoutes from './routes/chat.routes.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -24,6 +26,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 mkdirSync(resolve(__dirname, '../data/auth'), { recursive: true })
 mkdirSync(resolve(__dirname, '../uploads/csv'), { recursive: true })
 mkdirSync(resolve(__dirname, '../uploads/images'), { recursive: true })
+mkdirSync(resolve(__dirname, '../uploads/chat'), { recursive: true })
 mkdirSync(resolve(__dirname, '../logs'), { recursive: true })
 
 const app = express()
@@ -54,6 +57,7 @@ app.use('/api/whatsapp', whatsappRoutes)
 app.use('/api/settings', settingsRoutes)
 app.use('/api/contacts', contactsRoutes)
 app.use('/api/campaigns', campaignsRoutes)
+app.use('/api/chat', chatRoutes)
 
 // Health check
 app.get('/health', (req, res) => res.json({ ok: true, timestamp: new Date().toISOString() }))
@@ -67,6 +71,7 @@ io.on('connection', socket => {
 // Wire up socket to services
 waSetIO(io)
 campaignSetIO(io)
+chatSetIO(io)
 setRunCampaignFn(runCampaign)
 
 // Initialize settings if not exist
