@@ -111,6 +111,8 @@ model IncomingMessage {
   fromPhone  String
   fromName   String?
   content    String
+  mediaType  String?  // 'image' | 'audio' | 'video' | 'sticker'
+  mediaPath  String?  // caminho local do arquivo de mídia baixado
   campaignId String?
   receivedAt DateTime @default(now())
 }
