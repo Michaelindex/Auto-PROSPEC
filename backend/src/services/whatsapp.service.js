@@ -326,6 +326,26 @@ export async function setPresenceTyping(jid, durationMs) {
   }
 }
 
+export async function resolveSendJid(phone) {
+  const pnJid = phone.replace('+', '') + '@s.whatsapp.net'
+  if (!sock || !sock.user) return pnJid
+  try {
+    const [result] = await sock.onWhatsApp(pnJid)
+    if (!result?.exists) {
+      logger.warn({ phone, pnJid }, '[WA] resolveSendJid: número não existe no WhatsApp — usando PN')
+      return pnJid
+    }
+    let lid = result.lid || null
+    if (lid && !String(lid).includes('@')) lid = `${lid}@lid`
+    const sendJid = lid || result.jid || pnJid
+    logger.info({ phone, pnJid, jid: result.jid, lid, sendJid }, '[WA] resolveSendJid — endereço de envio escolhido')
+    return sendJid
+  } catch (err) {
+    logger.warn({ phone, err: err.message }, '[WA] resolveSendJid falhou — usando PN')
+    return pnJid
+  }
+}
+
 export async function checkOnWhatsApp(phone) {
   if (!sock || !sock.user) {
     logger.warn({ phone }, '[WA] checkOnWhatsApp: sock não disponível')

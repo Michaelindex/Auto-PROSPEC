@@ -6,7 +6,8 @@ import {
   sendTextMessage,
   sendImageMessage,
   setPresenceTyping,
-  checkOnWhatsApp
+  checkOnWhatsApp,
+  resolveSendJid
 } from './whatsapp.service.js'
 import { promoteQueued } from './queue.service.js'
 import { TEST_PHONE_NUMBER } from '../config/env.js'
@@ -62,7 +63,7 @@ async function sendMessage(campaign, contact, message, settings, isTest) {
     text = `[TESTE - Campanha: ${campaign.name}] [Contato fictício: ${contact.firstName}]\n\n${text}`
   }
 
-  const jid = targetPhone.replace('+', '') + '@s.whatsapp.net'
+  const jid = await resolveSendJid(targetPhone)
 
   logger.info({
     campaignId: campaign.id,

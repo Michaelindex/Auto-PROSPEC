@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs'
 import { basename } from 'path'
 import prisma from '../prisma/client.js'
-import { getSocket } from './whatsapp.service.js'
+import { getSocket, resolveSendJid } from './whatsapp.service.js'
 import logger from '../utils/logger.js'
 
 let io = null
@@ -216,9 +216,9 @@ export async function sendManualMessage(campaignId, contactId, { content, mediaP
   })
   if (!campaignContact) throw new Error('Contato não encontrado na campanha')
 
-  const jid = campaignContact.contact.phone.replace('+', '') + '@s.whatsapp.net'
   const sock = getSocket()
   if (!sock?.user) throw new Error('WhatsApp não conectado')
+  const jid = await resolveSendJid(campaignContact.contact.phone)
 
   let result
   if (mediaPath && mediaType) {

@@ -13,7 +13,9 @@
       "Bash(findstr /I \"LOG_LEVEL NODE_ENV\")",
       "Bash(node -e \"const p=require\\('@whiskeysockets/baileys/package.json'\\); console.log\\('baileys version:', p.version\\)\")",
       "Bash(node -e \"const b=require\\('@whiskeysockets/baileys'\\); console.log\\('exports com lid/jid:', Object.keys\\(b\\).filter\\(k=>/lid|jid|Pn|decode/i.test\\(k\\)\\).join\\(', '\\)\\)\")",
-      "Bash(node -e \"const b=require\\('@whiskeysockets/baileys'\\); console.log\\('isLidUser:', typeof b.isLidUser\\); const d=b.jidDecode\\('62874294734913@lid'\\); console.log\\('jidDecode @lid:', JSON.stringify\\(d\\)\\)\")"
+      "Bash(node -e \"const b=require\\('@whiskeysockets/baileys'\\); console.log\\('isLidUser:', typeof b.isLidUser\\); const d=b.jidDecode\\('62874294734913@lid'\\); console.log\\('jidDecode @lid:', JSON.stringify\\(d\\)\\)\")",
+      "Bash(dir /B node_modules\\\\@whiskeysockets\\\\baileys\\\\lib\\\\WAUSync\\\\Protocols)",
+      "Bash(dir /B)"
     ]
   }
 }
