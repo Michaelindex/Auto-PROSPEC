@@ -1,5 +1,12 @@
 import { cn } from '@/lib/utils'
 
+const API_BASE = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001'
+
+function mediaSrc(path) {
+  if (!path) return path
+  return path.startsWith('http') ? path : `${API_BASE}${path}`
+}
+
 function TickIcon({ status }) {
   if (status === 'read') return <span className="text-[10px] text-blue-400">✓✓</span>
   if (status === 'delivered') return <span className="text-[10px] opacity-60">✓✓</span>
@@ -26,32 +33,11 @@ export function ChatMessage({ message }) {
       >
         {message.mediaType === 'image' && message.mediaPath && (
           <img
-            src={message.mediaPath}
+            src={mediaSrc(message.mediaPath)}
             alt="imagem"
             className="rounded max-w-[240px] mb-1 cursor-pointer"
-            onClick={() => window.open(message.mediaPath, '_blank')}
+            onClick={() => window.open(mediaSrc(message.mediaPath), '_blank')}
           />
-        )}
-        {message.mediaType === 'video' && message.mediaPath && (
-          <video
-            controls
-            src={message.mediaPath}
-            className="rounded max-w-[240px] mb-1"
-          />
-        )}
-        {message.mediaType === 'audio' && message.mediaPath && (
-          <audio controls src={message.mediaPath} className="w-full mb-1" />
-        )}
-        {message.mediaType === 'document' && message.mediaPath && (
-          <a
-            href={message.mediaPath}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-xs underline decoration-dotted mb-1 text-blue-600 dark:text-blue-400"
-          >
-            <span>📎</span>
-            <span className="truncate max-w-[160px]">{message.mediaPath.split('/').pop()}</span>
-          </a>
         )}
 
         {message.content && (

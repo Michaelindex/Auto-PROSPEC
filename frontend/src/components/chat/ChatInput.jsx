@@ -1,14 +1,11 @@
 import { useState, useRef } from 'react'
-import { Paperclip, Send, X, Image, FileText, Mic, Video } from 'lucide-react'
+import { Paperclip, Send, X, Image } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 
 const MEDIA_TYPES = [
-  { label: 'Imagem', icon: Image, accept: 'image/jpeg,image/png,image/webp' },
-  { label: 'Documento', icon: FileText, accept: '.pdf,.docx,.xlsx,.doc,.xls,application/*' },
-  { label: 'Áudio', icon: Mic, accept: 'audio/*' },
-  { label: 'Vídeo', icon: Video, accept: 'video/mp4,video/*' }
+  { label: 'Imagem', icon: Image, accept: 'image/jpeg,image/png,image/webp' }
 ]
 
 export function ChatInput({ onSend, disabled }) {

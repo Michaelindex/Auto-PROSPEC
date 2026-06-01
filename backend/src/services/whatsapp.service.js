@@ -3,17 +3,21 @@ import makeWASocket, {
   DisconnectReason,
   fetchLatestBaileysVersion,
   makeCacheableSignalKeyStore,
-  isJidBroadcast
+  isJidBroadcast,
+  downloadMediaMessage
 } from '@whiskeysockets/baileys'
 import { Boom } from '@hapi/boom'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
-import { rmSync, existsSync } from 'fs'
+import { rmSync, existsSync, writeFileSync, mkdirSync } from 'fs'
+import { randomUUID } from 'crypto'
 import logger from '../utils/logger.js'
 import prisma from '../prisma/client.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const AUTH_DIR = resolve(__dirname, '../../data/auth')
+const CHAT_UPLOAD_DIR = resolve(__dirname, '../../uploads/chat')
+mkdirSync(CHAT_UPLOAD_DIR, { recursive: true })
 
 let sock = null
 let io = null
@@ -69,14 +73,33 @@ async function onMessage(messages) {
     try {
       const phone = '+' + pnJid.replace('@s.whatsapp.net', '').replace(/\D/g, '')
       const fromName = msg.pushName || null
-      const content =
-        msg.message.conversation ||
-        msg.message.extendedTextMessage?.text ||
-        msg.message.imageMessage?.caption ||
-        '[mídia]'
       const whatsappMsgId = msg.key?.id || null
 
-      logger.info({ phone, whatsappMsgId }, '[chat] Mensagem recebida')
+      let content = msg.message.conversation || msg.message.extendedTextMessage?.text || null
+      let mediaType = null
+      let mediaFilename = null
+      let mediaCaption = null
+
+      if (msg.message.imageMessage) {
+        mediaType = 'image'
+        mediaCaption = msg.message.imageMessage.caption || null
+        try {
+          const buffer = await downloadMediaMessage(msg, 'buffer', {}, {
+            logger,
+            reuploadRequest: sock.updateMediaMessage
+          })
+          mediaFilename = `${randomUUID()}.jpg`
+          writeFileSync(resolve(CHAT_UPLOAD_DIR, mediaFilename), buffer)
+          logger.info({ phone, filename: mediaFilename }, '[chat] Imagem recebida e salva')
+        } catch (err) {
+          logger.warn({ err: err.message }, '[chat] Falha ao baixar imagem recebida')
+        }
+      }
+
+      const mediaUrl = mediaFilename ? `/uploads/chat/${mediaFilename}` : null
+      const previewText = content || mediaCaption || (mediaType === 'image' ? '[imagem]' : '[mídia]')
+
+      logger.info({ phone, whatsappMsgId, mediaType }, '[chat] Mensagem recebida')
 
       // Find active campaign contact for existing reply tracking
       const activeCampaignContact = await prisma.campaignContact.findFirst({
@@ -91,7 +114,7 @@ async function onMessage(messages) {
       const campaignId = activeCampaignContact?.campaignId || null
 
       await prisma.incomingMessage.create({
-        data: { fromPhone: phone, fromName, content, campaignId }
+        data: { fromPhone: phone, fromName, content: previewText, mediaType, mediaPath: mediaUrl, campaignId }
       })
 
       if (activeCampaignContact) {
@@ -107,7 +130,7 @@ async function onMessage(messages) {
           campaignId,
           contactId: activeCampaignContact.contactId,
           phone,
-          content,
+          content: previewText,
           receivedAt: new Date().toISOString()
         })
       }
@@ -132,6 +155,9 @@ async function onMessage(messages) {
               contactId: cc.contactId,
               direction: 'in',
               content,
+              mediaPath: mediaFilename,
+              mediaType,
+              mediaCaption,
               whatsappMessageId: whatsappMsgId,
               status: 'sent'
             }
@@ -146,9 +172,9 @@ async function onMessage(messages) {
             type: 'manual',
             direction: 'in',
             content,
-            mediaPath: null,
-            mediaType: null,
-            mediaCaption: null,
+            mediaPath: mediaUrl,
+            mediaType,
+            mediaCaption,
             status: 'sent',
             sentAt: manualMsg.sentAt.toISOString(),
             isAutomated: false
