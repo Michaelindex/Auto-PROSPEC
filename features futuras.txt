@@ -1,0 +1,7 @@
+Penso em termos a infraestrutura para conectar mais que um celular, e para cada celular, ter um painel desse diferente, tendo inclusive a possibilidade de trabalhar com 50% da width total da janela em um numero, e os outros 50% no outro número, para trabalhar com clients cidades e números distintos.
+
+Na campanha agendada precisa ter a hora do agendamento ao lado pq não foi adicionado isso.
+
+Números de respostas no dash da campanha no Dashboard Geral não aparece, aparece sempre 0Respostas.
+
+Estamos tomando desconnect muito rápido e fácil do Whatsapp, precisamos colocar limites baseados em pesquisas feitas, para evitar os banimentos.

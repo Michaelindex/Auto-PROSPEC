@@ -23,7 +23,8 @@
       "Bash(Select-Object -Skip 1)",
       "Bash(Sort-Object)",
       "Bash(node *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(powershell *)"
     ]
   }
 }

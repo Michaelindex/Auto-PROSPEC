@@ -1,0 +1,19 @@
+ [2026-07-19 12:31:51.262 -0300] INFO: [CAMPANHA] Preparando envio
+[dev:backend]     campaignId: "cmrrxmcwh000a1wpm97thlpoj"
+[dev:backend]     contactPhone: "+5517988172354"
+[dev:backend]     targetJid: "255503443751090@lid"
+[dev:backend]     isTest: false
+[dev:backend]     msgOrder: 1
+[dev:backend]     textPreview: "Boa Tarde, Carol! Tudo bem? 😊\n\nPassando para avisar que essa semana começa o no"
+[dev:backend] [2026-07-19 12:31:56.265 -0300] INFO: [CAMPANHA] Carregando imagem do disco
+[dev:backend]     imagePath: "C:\Users\Administrador\Documents\GitHub\Auto-PROSPEC\backend\uploads\images\a0191712-c066-4420-8f23-b8067e37a728-wake 
+inside.jpeg"
+[dev:backend] [2026-07-19 12:31:56.265 -0300] INFO: [CAMPANHA] Enviando imagem com legenda
+[dev:backend]     imageSize: 164258
+[dev:backend] [2026-07-19 12:31:56.265 -0300] INFO: [WA] Enviando imagem
+[dev:backend]     jid: "255503443751090@lid"
+[dev:backend]     captionLength: 590
+[dev:backend]     imageSize: 164258
+[dev:backend] [2026-07-19 12:32:17.486 -0300] WARN (baileys): Error in uploading to media-gru1-1.cdn.whatsapp.net , retrying...
+[dev:backend]     trace: "Error: connect ETIMEDOUT 57.144.67.32:443\n    at AxiosError.from (file:///C:/Users/Administrador/Documents/GitHub/Auto-PROSPEC/backend/node_modules/axios/lib/core/AxiosError.js:77:24)\n    at ClientRequest.handleRequestError (file:///C:/Users/Administrador/Documents/GitHub/Auto-PROSPEC/backend/node_modules/axios/lib/adapters/http.js:1161:27)\n    at ClientRequest.emit (node:events:536:35)\n    at emitErrorEvent (node:_http_client:104:11)\n    at TLSSocket.socketErrorListener (node:_http_client:512:5)\n    at TLSSocket.emit (node:events:536:35)\n    at emitErrorNT (node:internal/streams/destroy:170:8)\n    at emitErrorCloseNT (node:internal/streams/destroy:129:3)\n    at process.processTicksAndRejections 
+(node:internal/process/task_queues:90:21)\n    at Axios.request (file:///C:/Users/Administrador/Documents/GitHub/Auto-PROSPEC/backend/node_modules/axios/lib/core/Axios.js:46:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async Object.upload (file:///C:/Users/Administrador/Documents/GitHub/Auto-PROSPEC/backend/node_modules/@whiskeysockets/baileys/lib/Utils/messages-media.js:511:30)\n    at async file:///C:/Users/Administrador/Documents/GitHub/Auto-PROSPEC/backend/node_modules/@whiskeysockets/baileys/lib/Utils/messages.js:144:28\n    at async Promise.all (index 0)\n    at async prepareWAMessageMedia (file:///C:/Users/Administrador/Documents/GitHub/Auto-PROSPEC/backend/node_modules/@whiskeysockets/baileys/lib/Utils/messages.js:142:40)\n    at async generateWAMessageContent (file:///C:/Users/Administrador/Documents/GitHub/Auto-PROSPEC/backend/node_modules/@whiskeysockets/baileys/lib/Utils/messages.js:438:13)\n    at async generateWAMessage (file:///C:/Users/Administrador/Documents/GitHub/Auto-PROSPEC/backend/node_modules/@whiskeysockets/baileys/lib/Utils/messages.js:548:46)\n    at async Object.sendMessage (file:///C:/Users/Administrador/Documents/GitHub/Auto-PROSPEC/backend/node_modules/@whiskeysockets/baileys/lib/Socket/messages-send.js:643:33)\n    at async sendImageMessage (file:///C:/Users/Administrador/Documents/GitHub/Auto-PROSPEC/backend/src/services/whatsapp.service.js:346:20)"
